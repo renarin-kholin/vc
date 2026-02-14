@@ -1,6 +1,6 @@
 
 # Voice Chat
-For now, this isn't anything impressive. It just uses your default input and output devices, creates streams for the respectively and then sends opus packets over the QUIC transport on a Stream protocol. This is just a proof of concept.
+For now, this isn't anything impressive. It just uses your default input and output devices, creates streams for them respectively and then sends opus packets over the QUIC transport on a Stream protocol. This is just a proof of concept.
 
 ## Usage
 ### Running the relay server
