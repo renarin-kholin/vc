@@ -4,15 +4,14 @@ For now, this isn't anything impressive. It just uses your default input and out
 
 ## Usage
 ### Running the relay server
-```sh
-$ cargo run --bin server -- --port $PORT --secret-key-seed $SECRET
+```console
+renarin@wandersail:~$ cargo run --bin server -- --port $PORT --secret-key-seed $SECRET
 ```
 ### Running the client 
-```sh
-$ cargo run --bin voice_chat
-$ Enter relay address or enter to use without relay: <Enter a relay address from the server output>
-$ Enter an address to dial or press enter to wait for connection: <Press enter and in another terminal run the client again and paste the multiaddress that shows up in the end>
+```console
+renarin@wandersail:~$ cargo run --bin voice_chat
+Enter relay address or enter to use without relay: # Enter a relay address from the server output
+Enter an address to dial or press enter to wait for connection: # Press enter and in another terminal run the client again and paste the multiaddress that shows up in the end
 ```
-
 
 
