@@ -10,9 +10,9 @@ use std::{
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use futures::{AsyncReadExt, AsyncWriteExt, StreamExt};
 use libp2p::{
-    Multiaddr, PeerId, Stream, StreamProtocol, autonat, dcutr, identify,
+    Multiaddr, PeerId, Stream, StreamProtocol, autonat, dcutr, identify, identity,
     multiaddr::Protocol,
-    noise, relay,
+    noise, quic, relay,
     swarm::{NetworkBehaviour, SwarmEvent},
     tcp, yamux,
 };
@@ -47,14 +47,16 @@ async fn main() -> Result<(), anyhow::Error> {
     if let Ok(relay_address) = input_relay_address.trim().parse::<Multiaddr>() {
         maybe_relay_address = Some(relay_address);
     }
-    let mut swarm = libp2p::SwarmBuilder::with_new_identity()
+    let keypair = identity::Keypair::generate_ed25519();
+    let quic_config = quic::Config::new(&keypair).mtu_upper_bound(1200);
+    let mut swarm = libp2p::SwarmBuilder::with_existing_identity(keypair.clone())
         .with_tokio()
         .with_tcp(
             tcp::Config::default().nodelay(true),
             noise::Config::new,
             yamux::Config::default,
         )?
-        .with_quic()
+        .with_quic_config(|_| quic_config)
         .with_dns()?
         .with_relay_client(noise::Config::new, yamux::Config::default)?
         .with_behaviour(|keypair, relay_behaviour| Behaviour {
@@ -85,13 +87,20 @@ async fn main() -> Result<(), anyhow::Error> {
     let host = cpal::default_host();
     let output_device = host.default_output_device().unwrap();
     let input_device = host.default_input_device().unwrap();
-    let mut input_config = input_device.default_input_config().unwrap().config();
-    let mut output_config = output_device.default_output_config().unwrap().config();
-
-    input_config.sample_rate = cpal::SampleRate::from(48000u32);
-    input_config.channels = 1;
-    output_config.sample_rate = cpal::SampleRate::from(48000u32);
-    output_config.channels = 1;
+    let input_config = input_device
+        .supported_input_configs()?
+        .next()
+        .unwrap()
+        .with_max_sample_rate()
+        .config();
+    let output_config = output_device
+        .supported_output_configs()?
+        .next()
+        .unwrap()
+        .with_max_sample_rate()
+        .config();
+    let i_channels = input_config.channels as usize;
+    let o_channels = output_config.channels as usize;
     let mut encoder = opus::Encoder::new(48000, opus::Channels::Mono, opus::Application::Voip)?;
 
     let (i_audio_tx, i_audio_rx) = channel::<Vec<u8>>(1920);
@@ -100,7 +109,12 @@ async fn main() -> Result<(), anyhow::Error> {
     let input_device_stream = input_device.build_input_stream(
         &input_config,
         move |data: &[f32], _| {
-            frame_buffer.extend(data.iter().map(|s| (s * i16::MAX as f32) as i16));
+            for frame in data.chunks(i_channels) {
+                let mono = frame.iter().copied().sum::<f32>() / i_channels as f32;
+                let sample_i16 =
+                    (mono * i16::MAX as f32).clamp(i16::MIN as f32, i16::MAX as f32) as i16;
+                frame_buffer.push(sample_i16);
+            }
             while frame_buffer.len() >= 960 {
                 let frame: Vec<i16> = frame_buffer.drain(..960).collect();
                 let mut compressed = vec![0u8; 4000];
@@ -117,11 +131,14 @@ async fn main() -> Result<(), anyhow::Error> {
     let output_device_stream = output_device.build_output_stream(
         &output_config,
         move |data: &mut [f32], _| {
-            for sample in data.iter_mut() {
-                if let Some(pcm_sample) = o_consumer.try_pop() {
-                    *sample = pcm_sample as f32 / i16::MAX as f32;
+            for frame in data.chunks_mut(o_channels) {
+                let sample = if let Some(pcm_sample) = o_consumer.try_pop() {
+                    pcm_sample as f32 / i16::MAX as f32
                 } else {
-                    *sample = 0.0;
+                    0.0
+                };
+                for ch in frame.iter_mut() {
+                    *ch = sample;
                 }
             }
         },
