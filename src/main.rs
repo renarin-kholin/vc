@@ -498,14 +498,14 @@ fn pick_sample_rate(
     let min = cfg.min_sample_rate();
     let max = cfg.max_sample_rate();
     if min == max {
-        return Ok(cfg.clone().with_sample_rate(min));
+        return Ok((*cfg).with_sample_rate(min));
     }
     // Prefer common Opus-compatible rates
     let preferred: &[u32] = &[48000, 24000, 16000, 12000, 8000];
     for &rate in preferred {
         if rate >= min && rate <= max {
             println!("Auto-selected sample rate: {rate}");
-            return Ok(cfg.clone().with_sample_rate(rate));
+            return Ok((*cfg).with_sample_rate(rate));
         }
     }
     loop {
@@ -514,7 +514,7 @@ fn pick_sample_rate(
         let mut buf = String::new();
         io::stdin().lock().read_line(&mut buf)?;
         match buf.trim().parse::<u32>() {
-            Ok(r) if r >= min && r <= max => return Ok(cfg.clone().with_sample_rate(r)),
+            Ok(r) if r >= min && r <= max => return Ok((*cfg).with_sample_rate(r)),
             _ => println!("Invalid sample rate, try again."),
         }
     }

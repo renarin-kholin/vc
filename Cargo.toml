@@ -3,6 +3,13 @@ name = "voice_chat"
 version = "0.1.0"
 edition = "2024"
 
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
 [target.x86_64-pc-windows-gnu]
 linker = "x86_64-w64-mingw32-gcc"
 ar = "x86_64-w64-mingw32-gcc-ar"
@@ -14,15 +21,13 @@ cfg-if = "1.0.4"
 clap = { version = "4.5.58", features = ["derive"] }
 cpal = "0.17.1"
 futures = "0.3.31"
-libp2p = { version =  "0.56.0", features = ["tokio", "quic", "identify", "noise", "relay", "ping", "yamux", "macros", "tcp", "dcutr", "dns", "autonat"]}
+libp2p = { version = "0.56.0", features = ["tokio", "quic", "identify", "noise", "relay", "yamux", "macros", "tcp", "dns", "autonat"]}
 libp2p-stream = "0.4.0-alpha"
 opus = "0.3.1"
 rand = "0.8.5"
-rat-widget = "3.1.1"
-ratatui = "0.30.0"
 ringbuf = "0.4.8"
 rubato = "1.0.1"
 strum = "0.27.2"
-tokio = { version = "1.49.0", features = ["full"]}
+tokio = { version = "1.49.0", features = ["rt-multi-thread", "macros", "sync", "net", "time"]}
 tracing = "0.1.44"
-tracing-subscriber = { version =  "0.3.22", features = ["env-filter"]}
+tracing-subscriber = { version = "0.3.22", features = ["env-filter"]}

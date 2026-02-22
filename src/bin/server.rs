@@ -8,7 +8,7 @@ use clap::Parser;
 use futures::StreamExt;
 use libp2p::{
     core::{Multiaddr, multiaddr::Protocol},
-    identify, identity, noise, ping, relay,
+    identify, identity, noise, relay,
     swarm::{NetworkBehaviour, SwarmEvent},
     tcp, yamux,
 };
@@ -42,7 +42,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     ..Default::default()
                 },
             ),
-            ping: ping::Behaviour::new(ping::Config::new()),
             identify: identify::Behaviour::new(identify::Config::new(
                 "/TODO/0.0.1".to_string(),
                 key.public(),
@@ -92,7 +91,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 #[derive(NetworkBehaviour)]
 struct Behaviour {
     relay: relay::Behaviour,
-    ping: ping::Behaviour,
     identify: identify::Behaviour,
 }
 
